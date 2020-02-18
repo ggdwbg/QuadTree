@@ -2,8 +2,11 @@
 #include "binary_sparse_matrix.h"
 #include "CUDA/fast_cuda_mul.h"
 #include "slow_mul.h"
+#include "CUDA/quadtree.h"
+#include "CUDA/converter.h"
 #include <random>
 #include <chrono>
+#include <bitset>
 
 std::mt19937 gen;
 
@@ -28,6 +31,36 @@ void measure(const std::string &activity, Callback f) {
 }
 
 int main(int argc, char** argv) {
+  static_assert(sizeof(tile) == 1024);
+  int nnz = 10000, szm = 1024;
+  std::vector<int> col_indices(nnz), row_sind(szm);
+  for (int i = 0; i < nnz; i++)
+    col_indices[i] = gen() % szm;
+  row_sind[0] = 0;
+  for (int i = 1; i < szm; i++)
+    row_sind[i] = row_sind[i - 1] + nnz / szm;
+  for (auto p : col_indices)
+    std::cout << p << ' ';
+  std::cout << '\n';
+  for (auto g : row_sind)
+    std::cout << g << ' ';
+  std::cout << '\n';
+
+  auto qt = converter::build_quadtree_from_csr(col_indices, row_sind);
+  std::cout << "tiles:\n";
+  for (int i = 0; i < qt.tiles.size(); i++) {
+    std::cout << "tile " << i << std::endl;
+    for (int j = 0; j < 64; j++)
+      std::cout << std::bitset<64>(qt.tiles[i].rows[j]) << '\n';
+  }
+  std::cout << "quadtree structure:" << std::endl;
+  for (int i = 0; i < qt.tree_structure_data.size(); i++) {
+    std::cout << "Children of node " << (i + 1) << ": ";
+    for (int j = 0; j < 4; j++)
+      std::cout << qt.tree_structure_data[i][j] << " ";
+    std::cout << '\n';
+  }
+  /*
   int n = 1 << 7;
   auto m1 = generate_random_matrix(n, n, 0.05);
   auto m2 = generate_random_matrix(n, n, 0.05);
@@ -47,6 +80,6 @@ int main(int argc, char** argv) {
   if (ok)
     std::cout << "Validation passed\n";
   else
-    std::cout << "Validation failed\n";
+    std::cout << "Validation failed\n";*/
   return 0;
 }
