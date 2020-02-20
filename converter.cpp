@@ -36,13 +36,13 @@ struct std::hash<void *> {
 
 std::unordered_map<void *, int> v_to_depth;
 /*
- * Leafs <=> nodes of depth $ levels $ relative to $ root $.
+ * Leaves <=> nodes of depth $ levels $ relative to $ root $.
  */
 size_t levels = 0;
 
 struct qt_node {
   /*
-   * Leafs are quad_tree nodes that have tiles as their children
+   * Leaves are quad_tree nodes that have tiles as their children
    * if this node is not a leaf, sub[j] is a qt_node*
    * otherwise it is a tile*
    * sub[0]: upper left
@@ -53,11 +53,10 @@ struct qt_node {
   void *sub[4] = {nullptr};
 
   qt_node() {
-    std::cout << "node constructed" << std::endl;
+    //std::cout << "node constructed" << std::endl;
   }
 
   ~qt_node() {
-    // if we're in a leaf, do nothing
     bool leaf = v_to_depth[this] == levels;
     for (auto v : sub)
       if (!leaf)
@@ -77,7 +76,7 @@ std::unordered_map<void *, int> euler_tour_ids, tile_ids;
 
 int euler_time = 0, leaf_time = 0;
 
-void dfs1(qt_node *v, int depth = 1) {
+void dfs(qt_node *v, int depth = 1) {
   v_to_depth[v] = depth;
   euler_tour_ids[v] = euler_time++;
   if (depth == levels) {
@@ -89,7 +88,7 @@ void dfs1(qt_node *v, int depth = 1) {
   for (auto p : v->sub) {
     if (!p)
       continue;
-    dfs1((qt_node *) p, depth + 1);
+    dfs((qt_node *) p, depth + 1);
   }
 }
 
@@ -97,28 +96,20 @@ std::unordered_map<coord, tile *> raw_tiles;
 
 qt_node *root = nullptr;
 
-void construct_tiles(const std::vector<int> &col_index, const std::vector<int> &row_index) {
-  size_t matr_sz = row_index.size();
-  assert((matr_sz & (matr_sz - 1)) == 0); // assume matr_sz is 2^k
+void add_point(int i, int j) {
+  auto tile_sz = quadtree::TILE_SIZE;
+  auto tid = std::make_pair(i / tile_sz, j / tile_sz);
+  if (!raw_tiles.count(tid))
+    raw_tiles[tid] = new tile(0);
+  uint32_t a = i % tile_sz, b = j % tile_sz;
+  *raw_tiles[{i / tile_sz, j / tile_sz}] |= 1ull << (tile_sz * a + b);
+}
 
+void prep_consts(int matr_sz) {
+  assert((matr_sz & (matr_sz - 1)) == 0); // assume matr_sz is 2^k
   auto tile_sz = quadtree::TILE_SIZE;
   while ((1u << levels) != matr_sz / tile_sz)
     ++levels;
-
-  for (size_t i = 0; i < row_index.size(); i++) {
-    int max = col_index.size();
-    if (i != matr_sz - 1)
-      max = row_index[i + 1];
-    for (int k = row_index[i]; k < max; ++k) {
-      auto j = col_index[k];
-      auto tid = std::make_pair(i / tile_sz, j / tile_sz);
-      if (!raw_tiles.count(tid))
-        raw_tiles[tid] = new tile(0);
-      uint32_t a = i % tile_sz, b = j % tile_sz;
-      *raw_tiles[{i / tile_sz, j / tile_sz}] |= 1ull << (tile_sz * a + b);
-    }
-  }
-
 }
 
 coord parent_coord(coord s) {
@@ -137,8 +128,6 @@ void construct_tree() {
       cur_lvl.insert({pid, new qt_node()});
     qt_node &par_node = *cur_lvl[pid];
     par_node.sub[parent_sub_id(p.first)] = p.second;
-    if (p.second)
-      std::cout << "p is " << *p.second << std::endl;
   }
   int lvl_at = 1;
 
@@ -166,22 +155,13 @@ void cleanup() {
   tile_ids.clear();
   v_to_depth.clear();
 
-  levels = euler_time = 0;
+  levels = euler_time = leaf_time = 0;
 
   delete root;
   root = nullptr;
 }
 
-/*
- * Constructs a quadtree representation of a sparse matrix
- * in O(m) time where m is the number of non-zero elements in the matrix.
- */
-quadtree converter::build_quadtree_from_csr(const std::vector<int> &col_index, const std::vector<int> &row_index) {
-  construct_tiles(col_index, row_index);
-  std::cout << raw_tiles.size() << std::endl;
-  construct_tree();
-  dfs1(root);
-
+quadtree finalize() {
   quadtree ans;
   auto &ts = ans.tree_structure_data;
   auto &tls = ans.tiles;
@@ -197,4 +177,39 @@ quadtree converter::build_quadtree_from_csr(const std::vector<int> &col_index, c
     tls[p.second] = *(tile *) p.first;
   cleanup();
   return ans;
+}
+
+/*
+ * Constructs a quadtree representation of a sparse matrix
+ * in O(m) time where m is the number of non-zero elements in the matrix.
+ */
+quadtree converter::build_quadtree_from_csr(const std::vector<int> &col_index, const std::vector<int> &row_index) {
+  size_t matr_sz = row_index.size();
+  prep_consts(matr_sz);
+
+  auto tile_sz = quadtree::TILE_SIZE;
+
+  for (size_t i = 0; i < row_index.size(); i++) {
+    int max = col_index.size();
+    if (i != matr_sz - 1)
+      max = row_index[i + 1];
+    for (int k = row_index[i]; k < max; ++k) {
+      auto j = col_index[k];
+      add_point(i, j);
+    }
+  }
+
+  construct_tree();
+  dfs(root);
+
+  return finalize();
+}
+
+quadtree converter::build_quadtree_from_coo(const std::vector<std::pair<int, int>> &els, int matr_sz) {
+  prep_consts(matr_sz);
+  for (auto p : els)
+    add_point(p.row, p.col);
+  construct_tree();
+  dfs(root);
+  return finalize();
 }

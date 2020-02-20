@@ -32,20 +32,18 @@ void measure(const std::string &activity, Callback f) {
 }
 
 int main(int argc, char** argv) {
-  int k = 32;
+  int k = 64;
   // 32/8 = 4.
   // 32 -> 4 x 16 -> 4 x ( 4 x 8)
 
-  std::vector<int> rows(k, 1);
-  std::vector<int> cols(2);
-  rows[0] = 0;
-  cols[0] = 17;
-  cols[1] = 18;
+  std::vector<std::pair<int, int>> pairs;
+  for (int i = 0; i < k; i++)
+    pairs.push_back({i, i});
+  for (int i = 0; i < k; i++)
+    pairs.push_back({i, k - 1 - i});
 
-  for (int i = 27; i < 32; i++)
-    rows[i] = 2;
 
-  quadtree qt = converter::build_quadtree_from_csr(cols, rows);
+  quadtree qt = converter::build_quadtree_from_coo(pairs, k);
 
   std::cout << "Tree structure:\n";
   auto &s = qt.tree_structure_data;
@@ -57,9 +55,12 @@ int main(int argc, char** argv) {
         std::cout << ", ";
       if (s[i][j] & quadtree::TILE_REFERENCE)
         std::cout << "tile ";
-      std::cout << (s[i][j] & (~quadtree::TILE_REFERENCE));
+      if (s[i][j])
+        std::cout << (s[i][j] & (~quadtree::TILE_REFERENCE));
+      else
+        std::cout << "null";
     }
-    std::cout << "] ";
+    std::cout << "]\n";
   };
 
   std::cout << "\nTiles:\n";
