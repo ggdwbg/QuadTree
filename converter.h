@@ -3,7 +3,7 @@
 
 
 #include <vector>
-#include "quadtree.h"
+#include "CUDA/quadtree.h"
 
 class converter {
 public:
