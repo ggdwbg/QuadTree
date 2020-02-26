@@ -71,10 +71,9 @@ struct qt_node {
  * Now we need to store it as a contiguous array in memory.
  * This is done by storing the euler tour of the tree.
  */
-
 std::unordered_map<void *, int> euler_tour_ids, tile_ids;
 
-int euler_time = 0, leaf_time = 0;
+int euler_time = 0, tile_time = 0;
 
 void dfs(qt_node *v, int depth = 1) {
   v_to_depth[v] = depth;
@@ -82,7 +81,7 @@ void dfs(qt_node *v, int depth = 1) {
   if (depth == levels) {
     for (auto p : v->sub)
       if (p)
-        tile_ids[p] = leaf_time++;
+        tile_ids[p] = tile_time++;
     return;
   }
   for (auto p : v->sub) {
@@ -155,7 +154,7 @@ void cleanup() {
   tile_ids.clear();
   v_to_depth.clear();
 
-  levels = euler_time = leaf_time = 0;
+  levels = euler_time = tile_time = 0;
 
   delete root;
   root = nullptr;

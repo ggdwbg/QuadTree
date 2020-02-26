@@ -8,6 +8,7 @@
 #include <chrono>
 #include <bitset>
 #include <fstream>
+#include <algorithm>
 
 std::mt19937 gen;
 
@@ -32,24 +33,40 @@ void measure(const std::string &activity, Callback f) {
 }
 
 int main(int argc, char** argv) {
-  int k = 64;
+#ifdef TEST
+  std::cout << "works" << std::endl;
+#endif
+  int k = 1 << 13;
   // 32/8 = 4.
   // 32 -> 4 x 16 -> 4 x ( 4 x 8)
-
+  // 7 million nodes in a 1 mil x 1 mil matrix
   std::vector<std::pair<int, int>> pairs;
   for (int i = 0; i < k; i++)
     pairs.push_back({i, i});
   for (int i = 0; i < k; i++)
     pairs.push_back({i, k - 1 - i});
+  for (int i = 0; i < k; i++)
+    pairs.push_back({k / 2, i});
+  for (int i = 0; i < k; i++)
+    pairs.push_back({i, k / 2});
+  for (int i = 0; i < k; i++)
+    for (int s = 0; s < 8; s++)
+      pairs.push_back({i, gen() % k});
+  std::sort(pairs.begin(), pairs.end());
+  pairs.erase(std::unique(pairs.begin(), pairs.end()), pairs.end());
+  quadtree qt;
 
-
-  quadtree qt = converter::build_quadtree_from_coo(pairs, k);
-
+  measure("building quadtree", [&]() {
+    qt = converter::build_quadtree_from_coo(pairs, k);
+  });
+  std::cout << "n = " << k << ", m = " << pairs.size() << std::endl;
+  std::cout << (16 * qt.tree_structure_data.size() + 2 * qt.tiles.size()) << " bytes in memory" << std::endl;
+/*
   std::cout << "Tree structure:\n";
   auto &s = qt.tree_structure_data;
 
   for (int i = 0; i < s.size(); i++) {
-    std::cout << (i + 1) << ":[";
+    std::cout << (i + 1) << ": [";
     for (int j = 0; j < 4; j++) {
       if (j)
         std::cout << ", ";
@@ -66,9 +83,8 @@ int main(int argc, char** argv) {
   std::cout << "\nTiles:\n";
   for (int i = 0; i < qt.tiles.size(); i++) {
     std::cout << "tile " << i << ":\n";
-    for (uint32_t row = 0; row < 8; row++)
-      std::cout << std::bitset<8>(qt.tiles[i] >> (8u * row) & 0xff) << std::endl;
-  }
-
+    for (uint32_t row = 0; row < 4; row++)
+      std::cout << std::bitset<4>(qt.tiles[i] >> (4u * row) & 0xf) << std::endl;
+  }*/
   return 0;
 }
