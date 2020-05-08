@@ -8,14 +8,20 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif ()
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -DTEST -Ofast -march=native")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Ofast -march=native -lcudart")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "")
 
+add_executable(quadtree_run_tests
+        driver.cxx
+        converter.cpp
+        converter.h
+        CUDA/quadtree.cpp
+        CUDA/quadtree.h)
+target_compile_options(quadtree_run_tests PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:-O3 --gpu-architecture=sm_50>)
 
-add_executable(quadtree_run_tests driver.cxx binary_sparse_matrix.cpp binary_sparse_matrix.h slow_mul.cpp slow_mul.h CUDA/fast_cuda_mul.cpp CUDA/fast_cuda_mul.h CUDA/quadtree_mul.cu converter.cpp converter.h CUDA/quadtree.cpp CUDA/quadtree.h)
-
-set_target_properties(quadtree_run_tests
-        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+#set_target_properties(quadtree_run_tests
+#        PROPERTIES CUDA_SEPARABLE_COMPILATION ON
+#        )
 
 # dummy

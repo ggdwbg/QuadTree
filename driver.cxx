@@ -1,7 +1,4 @@
 #include <iostream>
-#include "binary_sparse_matrix.h"
-#include "CUDA/fast_cuda_mul.h"
-#include "slow_mul.h"
 #include "CUDA/quadtree.h"
 #include "converter.h"
 #include <random>
@@ -11,16 +8,6 @@
 #include <algorithm>
 
 std::mt19937 gen;
-
-binary_sparse_matrix generate_random_matrix(size_t n, size_t m, double fillrate) {
-  binary_sparse_matrix ans(n, m);
-  size_t points = (size_t) (n * m * fillrate);
-  while (points--) {
-    int row = gen() % n, col = gen() % m;
-    ans.set(row, col, true);
-  }
-  return ans;
-}
 
 template<class Callback>
 void measure(const std::string &activity, Callback f) {
@@ -36,7 +23,8 @@ int main(int argc, char** argv) {
 #ifdef TEST
   std::cout << "works" << std::endl;
 #endif
-  int k = 1 << 13;
+  int klog = 18;
+  int k = 1 << klog;
   // 32/8 = 4.
   // 32 -> 4 x 16 -> 4 x ( 4 x 8)
   // 7 million nodes in a 1 mil x 1 mil matrix
@@ -57,34 +45,19 @@ int main(int argc, char** argv) {
   quadtree qt;
 
   measure("building quadtree", [&]() {
-    qt = converter::build_quadtree_from_coo(pairs, k);
+    qt = converter::build_quadtree_from_coo(pairs, klog);
   });
-  std::cout << "n = " << k << ", m = " << pairs.size() << std::endl;
-  std::cout << (16 * qt.tree_structure_data.size() + 2 * qt.tiles.size()) << " bytes in memory" << std::endl;
-/*
-  std::cout << "Tree structure:\n";
-  auto &s = qt.tree_structure_data;
-
-  for (int i = 0; i < s.size(); i++) {
-    std::cout << (i + 1) << ": [";
+  std::cout << qt.tree_structure_data.size() << std::endl;
+  /*std::cout << "n = " << k << ", m = " << pairs.size() << std::endl;
+  for (int i = 0; i < qt.tree_structure_data.size(); i++) {
+    std::cout << i << ": [";
     for (int j = 0; j < 4; j++) {
-      if (j)
-        std::cout << ", ";
-      if (s[i][j] & quadtree::TILE_REFERENCE)
-        std::cout << "tile ";
-      if (s[i][j])
-        std::cout << (s[i][j] & (~quadtree::TILE_REFERENCE));
-      else
-        std::cout << "null";
+      if (j) std::cout << ", ";
+      std::cout << qt.tree_structure_data[i][j];
     }
     std::cout << "]\n";
-  };
-
-  std::cout << "\nTiles:\n";
-  for (int i = 0; i < qt.tiles.size(); i++) {
-    std::cout << "tile " << i << ":\n";
-    for (uint32_t row = 0; row < 4; row++)
-      std::cout << std::bitset<4>(qt.tiles[i] >> (4u * row) & 0xf) << std::endl;
   }*/
+  // std::cout << (16 * qt.tree_structure_data.size() + 2 * qt.tiles.size()) << " bytes in memory" << std::endl;
+
   return 0;
 }
