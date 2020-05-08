@@ -13,6 +13,7 @@ public:
   static const uint32_t TILE_SZ_LOG = 2;
   static const uint32_t LEAF_MASK = (1u << 31u);
 
+  quadtree(int _k, std::vector<std::array<uint32_t, 4>> _data);
   /* Stores euler tour of the tree
    * that is obtained via dfs traversing the tree
    * with the following order on children: 0th is upper left,

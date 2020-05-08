@@ -19,36 +19,53 @@ void measure(const std::string &activity, Callback f) {
   std::cout << "Activity \"" << activity << "\" took " << ems << " ms." << std::endl;
 }
 
-int main(int argc, char** argv) {
+std::vector<std::pair<int, uint32_t *>> gpu_quadtrees;
+using u32 = uint32_t;
+
+u32 *transfer_quadtree_to_gpu(const quadtree &qt);
+
+size_t build_and_register(int k, std::vector<std::pair<int, int>> &coo) {
+  gpu_quadtrees.
+    emplace_back(k,
+                 transfer_quadtree_to_gpu(
+                   converter::build_quadtree_from_coo(coo, k)));
+  return gpu_quadtrees.size() - 1;
+}
+
+int main(int argc, char **argv) {
 #ifdef TEST
   std::cout << "works" << std::endl;
 #endif
-  int klog = 5;
+  int klog = 18;
   int k = 1 << klog;
   // 32/8 = 4.
   // 32 -> 4 x 16 -> 4 x ( 4 x 8)
   // 7 million nodes in a 1 mil x 1 mil matrix
   std::vector<std::pair<int, int>> pairs;
-  /*for (int i = 0; i < k; i++)
+  for (int i = 0; i < k; i++)
     pairs.push_back({i, i});
   for (int i = 0; i < k; i++)
     pairs.push_back({i, k - 1 - i});
   for (int i = 0; i < k; i++)
     pairs.push_back({k / 2, i});
   for (int i = 0; i < k; i++)
-    pairs.push_back({i, k / 2});*/
+    pairs.push_back({i, k / 2});
+
   for (int i = 0; i < k; i++)
-    for (int s = 0; s < 2; s++)
+    for (int s = 0; s < 6; s++)
       pairs.push_back({i, gen() % k});
   std::sort(pairs.begin(), pairs.end());
   pairs.erase(std::unique(pairs.begin(), pairs.end()), pairs.end());
-  quadtree qt;
+  int r;
+  std::cin >> r;
 
   measure("building quadtree", [&]() {
-    qt = converter::build_quadtree_from_coo(pairs, klog);
+    build_and_register(klog, pairs);
   });
-  std::cout << qt.tree_structure_data.size() << std::endl;
+  std::cin >> r;
+  /*std::cout << "quadtree size " << 16 * qt.tree_structure_data.size() << " bytes." << std::endl;
   std::cout << "n = " << k << ", m = " << pairs.size() << std::endl;
+  //
   for (int i = 0; i < qt.tree_structure_data.size(); i++) {
     std::cout << i << ": [";
     for (int j = 0; j < 4; j++) {
@@ -67,7 +84,7 @@ int main(int argc, char** argv) {
   std::cout << std::endl;
   for (auto p : pairs)
     std::cout << "(" << p.first << ", " << p.second << ") ";
-  std::cout << std::endl;
+  std::cout << std::endl;*/
   // std::cout << (16 * qt.tree_structure_data.size() + 2 * qt.tiles.size()) << " bytes in memory" << std::endl;
 
   return 0;

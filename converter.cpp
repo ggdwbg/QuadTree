@@ -37,10 +37,12 @@ std::vector<std::array<u32, 4>> build(const std::vector<point> &points, size_t l
     r &= tkm1 - 1, c &= tkm1 - 1;
     sub[subid].push_back({r, c});
   }
-  std::array<std::vector<std::array<u32, 4>>, 4> to_merge;
+  std::vector<std::vector<std::array<u32, 4>>> to_merge(4);
   u32 cur_shift = 0;
-  for (auto &tmi : to_merge)
+  for (auto &tmi : to_merge) {
     tmi = build(sub[cur_shift++], level - 1);
+    reverse(tmi.begin(), tmi.end());
+  }
   std::array<u32, 4> shifts = {1};
   for (int i = 1; i < 4; i++)
     shifts[i] = shifts[i - 1] + to_merge[i - 1].size();
@@ -51,16 +53,20 @@ std::vector<std::array<u32, 4>> build(const std::vector<point> &points, size_t l
     ++cur_shift;
   }
   cur_shift = 0;
-  for (auto &tmi : to_merge) {
-    std::for_each(tmi.begin(), tmi.end(),
-                  [&](std::array<u32, 4> &cur) {
-                    for (u32 k = 0; k < 4; k++) {
-                      if (!cur[k]) continue;
-                      if (cur[k] & quadtree::LEAF_MASK) continue;
-                      cur[k] += shifts[cur_shift];
-                    }
-                    ret.push_back(cur);
-                  });
+  std::reverse(to_merge.begin(), to_merge.end());
+  while (!to_merge.empty()) {
+    auto &tmi = to_merge.back();
+    while (!tmi.empty()) {
+      auto cur = tmi.back();
+      tmi.pop_back();
+      for (u32 k = 0; k < 4; k++) {
+        if (!cur[k]) continue;
+        if (cur[k] & quadtree::LEAF_MASK) continue;
+        cur[k] += shifts[cur_shift];
+      }
+      ret.push_back(cur);
+    }
+    to_merge.pop_back();
     ++cur_shift;
   }
 #undef row
@@ -68,32 +74,8 @@ std::vector<std::array<u32, 4>> build(const std::vector<point> &points, size_t l
   return ret;
 }
 
-quadtree converter::build_quadtree_from_csr(const std::vector<int> &col_index, const std::vector<int> &row_index) {
-  size_t matr_sz = row_index.size();
-  /* prep_consts(matr_sz);
-
-   auto tile_sz = quadtree::TILE_SIZE;
-
-   for (size_t i = 0; i < row_index.size(); i++) {
-     int max = col_index.size();
-     if (i != matr_sz - 1)
-       max = row_index[i + 1];
-     for (int k = row_index[i]; k < max; ++k) {
-       auto j = col_index[k];
-       add_point(i, j);
-     }
-   }
-   construct_tree();
-   dfs(root);
-
-   return finalize();*/
-  return quadtree();
-}
-
 quadtree converter::build_quadtree_from_coo(const std::vector<std::pair<int, int>> &els, int k) {
-  quadtree ret;
-  ret.k = k, ret.tree_structure_data = build(els, k);
-  return ret;
+  return quadtree(k, build(els, k));
 }
 
 std::vector<std::pair<int, int>> converter::get_nnz_from_quadtree(const quadtree &qt) {
@@ -120,7 +102,8 @@ std::vector<std::pair<int, int>> converter::get_nnz_from_quadtree(const quadtree
           for (u32 r = 0; r < tile_sz; r++) {
             for (u32 c = 0; c < tile_sz; c++) {
               if (cur_tile & (1u << (tile_sz * r + c))) {
-                int cx = gx * tile_sz + cur_shift_row + r, cy = gy * tile_sz + cur_shift_col + c;
+                int cx = gx * tile_sz + cur_shift_row + r,
+                  cy = gy * tile_sz + cur_shift_col + c;
                 ans.emplace_back(cx, cy);
               }
             }

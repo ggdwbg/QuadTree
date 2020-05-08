@@ -17,7 +17,9 @@ add_executable(quadtree_run_tests
         converter.cpp
         converter.h
         CUDA/quadtree.cpp
-        CUDA/quadtree.h)
+        CUDA/quadtree.h
+        CUDA/cuda_mul.cu
+        )
 target_compile_options(quadtree_run_tests PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:-O3 --gpu-architecture=sm_50>)
 
 #set_target_properties(quadtree_run_tests
