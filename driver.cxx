@@ -23,22 +23,22 @@ int main(int argc, char** argv) {
 #ifdef TEST
   std::cout << "works" << std::endl;
 #endif
-  int klog = 18;
+  int klog = 5;
   int k = 1 << klog;
   // 32/8 = 4.
   // 32 -> 4 x 16 -> 4 x ( 4 x 8)
   // 7 million nodes in a 1 mil x 1 mil matrix
   std::vector<std::pair<int, int>> pairs;
-  for (int i = 0; i < k; i++)
+  /*for (int i = 0; i < k; i++)
     pairs.push_back({i, i});
   for (int i = 0; i < k; i++)
     pairs.push_back({i, k - 1 - i});
   for (int i = 0; i < k; i++)
     pairs.push_back({k / 2, i});
   for (int i = 0; i < k; i++)
-    pairs.push_back({i, k / 2});
+    pairs.push_back({i, k / 2});*/
   for (int i = 0; i < k; i++)
-    for (int s = 0; s < 8; s++)
+    for (int s = 0; s < 2; s++)
       pairs.push_back({i, gen() % k});
   std::sort(pairs.begin(), pairs.end());
   pairs.erase(std::unique(pairs.begin(), pairs.end()), pairs.end());
@@ -48,15 +48,26 @@ int main(int argc, char** argv) {
     qt = converter::build_quadtree_from_coo(pairs, klog);
   });
   std::cout << qt.tree_structure_data.size() << std::endl;
-  /*std::cout << "n = " << k << ", m = " << pairs.size() << std::endl;
+  std::cout << "n = " << k << ", m = " << pairs.size() << std::endl;
   for (int i = 0; i < qt.tree_structure_data.size(); i++) {
     std::cout << i << ": [";
     for (int j = 0; j < 4; j++) {
       if (j) std::cout << ", ";
-      std::cout << qt.tree_structure_data[i][j];
+      if (qt.tree_structure_data[i][j] & quadtree::LEAF_MASK)
+        std::cout << std::bitset<16>(qt.tree_structure_data[i][j] & ~quadtree::LEAF_MASK);
+      else
+        std::cout << qt.tree_structure_data[i][j];
     }
     std::cout << "]\n";
-  }*/
+  }
+  auto corr = converter::get_nnz_from_quadtree(qt);
+  std::sort(corr.begin(), corr.end());
+  for (auto p : corr)
+    std::cout << "(" << p.first << ", " << p.second << ") ";
+  std::cout << std::endl;
+  for (auto p : pairs)
+    std::cout << "(" << p.first << ", " << p.second << ") ";
+  std::cout << std::endl;
   // std::cout << (16 * qt.tree_structure_data.size() + 2 * qt.tiles.size()) << " bytes in memory" << std::endl;
 
   return 0;

@@ -21,6 +21,9 @@ public:
    * then $ j $-th child of vertex $ i $ doesn't contain a single non-zero entry.
    * */
   std::vector<std::array<uint32_t, 4>> tree_structure_data;
+
+  // k = log_2(n)
+  int k;
 };
 
 #endif //QUADTREE_QUADTREE_H
