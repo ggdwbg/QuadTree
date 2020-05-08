@@ -22,8 +22,8 @@ add_executable(quadtree_run_tests
         )
 target_compile_options(quadtree_run_tests PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:-O3 --gpu-architecture=sm_50>)
 
-#set_target_properties(quadtree_run_tests
-#        PROPERTIES CUDA_SEPARABLE_COMPILATION ON
-#        )
+set_target_properties(quadtree_run_tests
+        PROPERTIES CUDA_SEPARABLE_COMPILATION ON
+        )
 
 # dummy

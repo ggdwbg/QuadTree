@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 #ifdef TEST
   std::cout << "works" << std::endl;
 #endif
-  int klog = 18;
+  int klog = 10;
   int k = 1 << klog;
   // 32/8 = 4.
   // 32 -> 4 x 16 -> 4 x ( 4 x 8)
