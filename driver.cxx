@@ -135,12 +135,12 @@ void CPU_add_quadtree(
                              || (res_children[i][4 * j + k] & quadtree::LEAF_MASK) ? 0 : (int) add_to_merged_tours[i]);
       }
     }
-  }
+  }/*
   printf("CPU added left[%u] with right[%u] tour size: %u: elements: ",
          u, v);
   for (int i = 0; i < (int) (4 * (*ret_size)); i++)
     printf("%u ", (*ret_val)[i]);
-  putchar('\n');
+  putchar('\n');*/
 }
 
 std::vector<std::pair<int, uint32_t *>> gpu_quadtrees;
@@ -166,29 +166,38 @@ int main(int argc, char **argv) {
 #ifdef TEST
   std::cout << "works" << std::endl;
 #endif
-  int klog = 7;
-  int k = 1u << klog;
   cuda_test();
+  int klog = 15;
+  int k = 1u << klog; // 12: 190000 ms.
+  // -> 48000
+  // -> 3600
+
   std::vector<std::pair<int, int>> coo1, coo2;
   for (int i = 0; i < k; i++)
     coo1.emplace_back(i, i);
+
   for (int i = 0; i < k; i++)
     for (int j = 0; j < 5; j++) {
       coo2.emplace_back(i, gen() % k);
+      coo1.emplace_back(i, gen() % k);
       coo2.emplace_back(i, k - 1 - i);
     }
   coo2.emplace_back(42, 43);
   std::sort(coo2.begin(), coo2.end());
   coo2.erase(std::unique(coo2.begin(), coo2.end()), coo2.end());
+  std::sort(coo1.begin(), coo1.end());
+  coo1.erase(std::unique(coo1.begin(), coo1.end()), coo1.end());
+
+
   std::vector<std::array<u32, 4>> want1, want2;
   size_t sz1 = 0, sz2 = 0;
-  cuda_test();
   measure("building quadtrees", [&]() {
     want1 = build_and_register(klog, coo1).second;
     sz1 = want1.size();
     want2 = build_and_register(klog, coo2).second;
     sz2 = want2.size();
   });
+  cout << want1.size() << '\n';
   auto print_euler_tour = [&](std::vector<std::array<u32, 4>> &want, const char *str = "") {
     std::cout << str << '\n';
     for (int i = 0; i < want.size(); i++) {
@@ -205,28 +214,29 @@ int main(int argc, char **argv) {
   };
   u32 ret_size;
   u32 *ret_val;
-  CPU_add_quadtree((u32 *) (want1.data()), 0, want1.size(),
-                   (u32 *) want2.data(), 0, want2.size(),
-                   klog, &ret_val, &ret_size);
+  measure("CPU addition", [&] {
+    CPU_add_quadtree((u32 *) (want1.data()), 0, want1.size(),
+                     (u32 *) want2.data(), 0, want2.size(),
+                     klog, &ret_val, &ret_size);
+  });
+
   vector<array<u32, 4>> cpu_quadtree_ret(ret_size);
   for (int i = 0; i < (int) ret_size; i++)
     for (int j = 0; j < 4; j++)
       cpu_quadtree_ret[i][j] = *(ret_val + 4 * i + j);
   auto cpu_points = converter::get_nnz_from_quadtree(quadtree(klog, cpu_quadtree_ret));
   sort(cpu_points.begin(), cpu_points.end());
-
-  cuda_test();
-  vector<array<u32, 4>> gpu_ret = test_addition(gpu_quadtrees[0].second, gpu_quadtrees[1].second, klog, want1.size(),
-                                                want2.size());
+  int r;
+  //cin >> r;
+  vector<array<u32, 4>> gpu_ret;
+  measure("GPU addition", [&]() {
+    gpu_ret = test_addition(gpu_quadtrees[0].second, gpu_quadtrees[1].second, klog, want1.size(),
+                            want2.size());
+  });
   auto gpu_points = converter::get_nnz_from_quadtree(quadtree(klog, gpu_ret));
   sort(gpu_points.begin(), gpu_points.end());
-  cout << "GPU points: ";
-  for (auto r : gpu_points)
-    cout << "(" << r.first << ", " << r.second << ") ";
-  cout << endl;
-  cout << "CPU points: ";
-  for (auto r : cpu_points)
-    cout << "(" << r.first << ", " << r.second << ") ";
-  cout << endl;
+  //gpu_points.pop_back();
+  //gpu_points.emplace_back(1, 2);
+  assert(cpu_points == gpu_points);
   return 0;
 }
